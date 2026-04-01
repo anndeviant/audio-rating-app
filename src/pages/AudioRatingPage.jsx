@@ -188,7 +188,7 @@ export default function AudioRatingPage() {
                             const currentRating = ratings[audio.name] || 0;
                             const isSaving = savingStates[audio.name];
                             const justSaved = successMessage === audio.name;
-                            const pertemuanNumber = index + 1;
+                            const pertemuanNumber = audio.pertemuanNumber ?? index + 1;
                             const referenceImage = referenceImages[pertemuanNumber];
 
                             return (

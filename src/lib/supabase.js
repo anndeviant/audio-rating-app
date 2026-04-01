@@ -5,6 +5,14 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+function extractMeetingNumber(fileName) {
+  const match = fileName.match(/(\d+)/);
+  if (!match) return Number.POSITIVE_INFINITY;
+
+  const parsed = parseInt(match[1], 10);
+  return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+}
+
 /**
  * Create or retrieve a rater by name.
  * If the rater already exists, return their record; otherwise insert a new one.
@@ -61,7 +69,7 @@ export async function getPeserta() {
 /**
  * List audio files for a specific participant from Supabase Storage.
  * @param {string} folderName - e.g. "peserta_1"
- * @returns {Promise<Array<{name: string, url: string}>>}
+ * @returns {Promise<Array<{name: string, url: string, pertemuanNumber: number | null}>>}
  */
 export async function getAudioFiles(folderName) {
   const { data, error } = await supabase.storage
@@ -90,14 +98,29 @@ export async function getAudioFiles(folderName) {
           name.endsWith(".ogg"))
       );
     })
+    .sort((a, b) => {
+      const aNumber = extractMeetingNumber(a.name);
+      const bNumber = extractMeetingNumber(b.name);
+
+      if (aNumber !== bNumber) {
+        return aNumber - bNumber;
+      }
+
+      return a.name.localeCompare(b.name, undefined, { numeric: true });
+    })
     .map((file) => {
       const { data: urlData } = supabase.storage
         .from("audio-files")
         .getPublicUrl(`${folderName}/${file.name}`);
 
+      const pertemuanNumber = extractMeetingNumber(file.name);
+
       return {
         name: file.name,
         url: urlData.publicUrl,
+        pertemuanNumber: Number.isFinite(pertemuanNumber)
+          ? pertemuanNumber
+          : null,
       };
     });
 }
@@ -135,11 +158,8 @@ export async function getReferenceImages(folderName) {
   const imageMap = {};
 
   imageFiles.forEach((file) => {
-    const match = file.name.match(/(\d+)/);
-    if (!match) return;
-
-    const pertemuanNumber = parseInt(match[1], 10);
-    if (!pertemuanNumber) return;
+    const pertemuanNumber = extractMeetingNumber(file.name);
+    if (!Number.isFinite(pertemuanNumber)) return;
 
     const { data: urlData } = supabase.storage
       .from("audio-files")
