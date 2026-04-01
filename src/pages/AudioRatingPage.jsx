@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import {
     getAudioFiles,
+    getReferenceImages,
     saveRating,
     getRatingsByRaterAndPeserta,
     getPeserta,
@@ -27,6 +28,7 @@ export default function AudioRatingPage() {
     const [raterId, setRaterId] = useState("");
     const [peserta, setPeserta] = useState(null);
     const [audioFiles, setAudioFiles] = useState([]);
+    const [referenceImages, setReferenceImages] = useState({});
     const [ratings, setRatings] = useState({});
     const [savingStates, setSavingStates] = useState({});
     const [loading, setLoading] = useState(true);
@@ -59,12 +61,14 @@ export default function AudioRatingPage() {
 
             setPeserta(currentPeserta);
 
-            const [files, existingRatings] = await Promise.all([
+            const [files, existingRatings, images] = await Promise.all([
                 getAudioFiles(currentPeserta.folder_name),
                 getRatingsByRaterAndPeserta(id, pesertaId),
+                getReferenceImages("dirosa_reference"),
             ]);
 
             setAudioFiles(files);
+            setReferenceImages(images);
 
             const ratingsMap = {};
             existingRatings.forEach((r) => {
@@ -184,6 +188,8 @@ export default function AudioRatingPage() {
                             const currentRating = ratings[audio.name] || 0;
                             const isSaving = savingStates[audio.name];
                             const justSaved = successMessage === audio.name;
+                            const pertemuanNumber = index + 1;
+                            const referenceImage = referenceImages[pertemuanNumber];
 
                             return (
                                 <Card
@@ -194,11 +200,33 @@ export default function AudioRatingPage() {
                                         } ${justSaved ? "ring-2 ring-green-300" : ""}`}
                                 >
                                     <CardContent className="p-5">
+                                        {/* Pertemuan label and reference image */}
+                                        <div className="mb-4">
+                                            <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                                                Pertemuan {pertemuanNumber}
+                                            </span>
+
+                                            {referenceImage?.url ? (
+                                                <div className="mt-2 rounded-md overflow-hidden border border-border bg-secondary/30">
+                                                    <img
+                                                        src={referenceImage.url}
+                                                        alt={`Referensi Pertemuan ${pertemuanNumber}`}
+                                                        className="w-full h-auto max-h-64 object-contain"
+                                                        loading="lazy"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-muted-foreground mt-2">
+                                                    Gambar referensi belum tersedia
+                                                </p>
+                                            )}
+                                        </div>
+
                                         {/* Audio number and status */}
                                         <div className="flex items-center justify-between mb-3">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                                                    Audio {index + 1}
+                                                    Audio {pertemuanNumber}
                                                 </span>
                                                 {currentRating > 0 && (
                                                     <CheckCircle2 className="w-4 h-4 text-green-500" />

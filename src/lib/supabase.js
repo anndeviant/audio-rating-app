@@ -103,6 +103,58 @@ export async function getAudioFiles(folderName) {
 }
 
 /**
+ * List reference images (Pertemuan) from a folder in Supabase Storage.
+ * @param {string} folderName - e.g. "dirosa_reference"
+ * @returns {Promise<Record<number, {name: string, url: string}>>}
+ */
+export async function getReferenceImages(folderName) {
+  const { data, error } = await supabase.storage
+    .from("audio-files")
+    .list(folderName, { limit: 200, sortBy: { column: "name", order: "asc" } });
+
+  if (error) {
+    console.error("Error listing reference images:", error);
+    return {};
+  }
+
+  if (!data || data.length === 0) {
+    return {};
+  }
+
+  const imageFiles = data.filter((file) => {
+    const name = file.name.toLowerCase();
+    return (
+      file.name !== ".emptyFolderPlaceholder" &&
+      (name.endsWith(".png") ||
+        name.endsWith(".jpg") ||
+        name.endsWith(".jpeg") ||
+        name.endsWith(".webp"))
+    );
+  });
+
+  const imageMap = {};
+
+  imageFiles.forEach((file) => {
+    const match = file.name.match(/(\d+)/);
+    if (!match) return;
+
+    const pertemuanNumber = parseInt(match[1], 10);
+    if (!pertemuanNumber) return;
+
+    const { data: urlData } = supabase.storage
+      .from("audio-files")
+      .getPublicUrl(`${folderName}/${file.name}`);
+
+    imageMap[pertemuanNumber] = {
+      name: file.name,
+      url: urlData.publicUrl,
+    };
+  });
+
+  return imageMap;
+}
+
+/**
  * Save a rating to the database.
  * @param {{raterId: string, pesertaId: number, audioFilename: string, rating: number}} params
  */
